@@ -1,0 +1,250 @@
+#!/usr/bin/env PYTHONHASHSEED=1234 python3
+
+# Copyright 2014-2024 Brett Slatkin, Pearson Education Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+### 책 예제에 맞는 환경 설정을 시작함
+import random
+random.seed(1234)
+
+import logging
+from pprint import pprint
+from sys import stdout as STDOUT
+
+# 모든 출력을 임시 디렉터리로 보냄
+import atexit
+import gc
+import io
+import os
+import tempfile
+
+TEST_DIR = tempfile.TemporaryDirectory()
+atexit.register(TEST_DIR.cleanup)
+
+# 윈도우에서 프로세스가 제대로 종료되도록 함
+OLD_CWD = os.getcwd()
+atexit.register(lambda: os.chdir(OLD_CWD))
+os.chdir(TEST_DIR.name)
+
+def close_open_files():
+    everything = gc.get_objects()
+    for obj in everything:
+        if isinstance(obj, io.IOBase):
+            obj.close()
+
+atexit.register(close_open_files)
+### 책 예제에 맞는 환경설정 끝
+import sys
+
+print("아이템 86")
+print("Example 1")
+try:
+    def do_processing():
+        raise KeyboardInterrupt
+    
+    def main(argv):
+        while True:
+            try:
+                do_processing()  # 인터럽트가 여기서 발생함
+            except Exception as e:
+                print("오류:", type(e), e)
+    
+        return 0
+    
+    if __name__ == "__main__":
+        sys.exit(main(sys.argv))
+    else:
+        main(["foo.csv"])
+except:
+    logging.exception('이 예외가 발생해야 함')
+else:
+    assert False
+
+
+print("Example 2")
+try:
+    with open("my_data.csv", "w") as f:
+        f.write("file exists")
+    
+    def do_processing(handle):
+        raise KeyboardInterrupt
+    
+    def main(argv):
+        data_path = argv[1]
+        handle = open(data_path, "w+")
+    
+        while True:
+            try:
+                do_processing(handle)
+            except Exception as e:
+                print("오류:", type(e), e)
+            except BaseException:
+                print("인터럽트 정리")
+                handle.flush()
+                handle.close()
+                return 1
+    
+        return 0
+    
+    if __name__ == "__main__":
+        sys.exit(main(sys.argv))
+    else:
+        main(["ignore", "foo.csv"])
+except:
+    logging.exception('이 예외가 발생해야 함')
+else:
+    assert False
+
+
+print("Example 3")
+try:
+    def do_processing(handle):
+        raise KeyboardInterrupt
+    
+    def main(argv):
+        data_path = argv[1]
+        handle = open(data_path, "w+")
+    
+        try:
+            while True:
+                try:
+                    do_processing(handle)
+                except Exception as e:
+                    print("오류:", type(e), e)
+        finally:
+            print("finally에서 정리")  # 항상 실행됨
+            handle.flush()
+            handle.close()
+    
+    if __name__ == "__main__":
+        sys.exit(main(sys.argv))
+    else:
+        main(["ignore", "foo.csv"])
+except:
+    logging.exception('이 예외가 발생해야 함')
+else:
+    assert False
+
+
+print("Example 4")
+try:
+    def do_processing():
+        raise KeyboardInterrupt
+    
+    def input(prompt):
+        print(f"{prompt}y")
+        return "y"
+    
+    def main(argv):
+        while True:
+            try:
+                do_processing()
+            except Exception as e:
+                print("오류:", type(e), e)
+            except KeyboardInterrupt:
+                found = input("끝내겠습니까? [y/n]: ")
+                if found == "y":
+                    raise  # 오류를 전파함
+    
+    if __name__ == "__main__":
+        sys.exit(main(sys.argv))
+    else:
+        main(["ignore", "foo.csv"])
+    
+    del input
+except:
+    logging.exception('이 예외가 발생해야 함')
+else:
+    assert False
+
+
+print("Example 5")
+import functools
+
+def log(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+        except Exception as e:
+            result = e
+            raise
+        finally:
+            print(
+                f"{func.__name__} 호출됨"
+                f"(*{args!r}, **{kwargs!r}) "
+                f"{result!r} 얻음"
+            )
+
+    return wrapper
+
+
+print("Example 6")
+try:
+    @log
+    def my_func(x):
+        x / 0
+    
+    my_func(123)
+except:
+    logging.exception('이 예외가 발생해야 함')
+else:
+    assert False
+
+
+print("Example 7")
+try:
+    @log
+    def other_func(x):
+        if x > 0:
+            sys.exit(1)
+    
+    other_func(456)
+except:
+    logging.exception('이 예외가 발생해야 함')
+else:
+    assert False
+
+
+print("Example 8")
+def fixed_log(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+        except BaseException as e:  # Fixed
+            result = e
+            raise
+        finally:
+            print(
+                f"{func.__name__} 호출됨"
+                f"(*{args!r}, **{kwargs!r}) "
+                f"{result!r} 얻음"
+            )
+
+    return wrapper
+
+
+print("Example 9")
+try:
+    @fixed_log
+    def other_func(x):
+        if x > 0:
+            sys.exit(1)
+    
+    other_func(456)
+except:
+    logging.exception('이 예외가 발생해야 함')
+else:
+    assert False
